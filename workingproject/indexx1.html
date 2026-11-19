@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document Expiry & Renewal Tracker</title>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root {
+      --bg-main: #f4f6f9;
+      --bg-card: #ffffff;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --success: #10b981;
+      --border: #e2e8f0;
+      --radius: 10px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar Navigation */
+    .sidebar {
+      width: 240px;
+      background-color: var(--bg-card);
+      border-right: 1px solid var(--border);
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 1.1rem;
+      margin-bottom: 32px;
+      color: var(--primary);
+    }
+
+    .nav-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      color: var(--text-muted);
+      cursor: pointer;
+      font-weight: 500;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .nav-item:hover, .nav-item.active {
+      background-color: #eff6ff;
+      color: var(--primary);
+    }
+
+    /* Main Content Area */
+    .main-content {
+      flex: 1;
+      padding: 32px;
+      overflow-y: auto;
+    }
+
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+
+    .btn-primary {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: var(--radius);
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary:hover {
+      background-color: var(--primary-hover);
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      padding: 20px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+
+    .stat-card h4 {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .stat-card .val {
+      font-size: 1.8rem;
+      font-weight: 700;
+    }
+
+    /* Tables & Cards */
+    .card {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .filter-btn-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-filter {
+      background: none;
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    .btn-filter.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    th, td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+    }
+
+    th {
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .doc-cell {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 600;
+    }
+
+    .doc-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: #f1f5f9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .badge-tracked { background: #d1fae5; color: #065f46; }
+    .badge-remind { background: #fef3c7; color: #92400e; }
+    .badge-expired { background: #fee2e2; color: #991b1b; }
+
+    .btn-action {
+      background: none;
+      border: 1px solid var(--border);
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      color: var(--text-main);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .btn-action:hover {
+      background: #f8fafc;
+    }
+
+    .btn-danger:hover {
+      background: #fee2e2;
+      color: var(--danger);
+      border-color: #fca5a5;
+    }
+
+    /* Page Views */
+    .page-section {
+      display: none;
+    }
+
+    .page-section.active-page {
+      display: block;
+    }
+
+    /* Modal Styling */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.4);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: white;
+      padding: 24px;
+      border-radius: var(--radius);
+      width: 100%;
+      max-width: 440px;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+
+    /* Notifications List */
+    .remind-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .remind-item {
+      display: flex;
+      gap: 16px;
+      padding: 16px;
+      background: #fffbebf;
+      border: 1px solid #fde68a;
+      border-radius: var(--radius);
+    }
+
+    .remind-item.urgent {
+      background: #fef2f2;
+      border-color: #fecaca;
+    }
+
+    .remind-icon {
+      color: var(--warning);
+    }
+
+    .remind-item.urgent .remind-icon {
+      color: var(--danger);
+    }
+
+    .remind-content h5 {
+      font-size: 0.95rem;
+      margin-bottom: 4px;
+    }
+
+    .remind-content p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <i data-lucide="shield-alert"></i> TrackIt
+    </div>
+    <ul class="nav-list">
+      <li class="nav-item active" id="nav-dashboard" onclick="switchPage('dashboard')">
+        <i data-lucide="layout-dashboard"></i> Dashboard
+      </li>
+      <li class="nav-item" id="nav-documents" onclick="switchPage('documents')">
+        <i data-lucide="files"></i> All Documents
+      </li>
+      <li class="nav-item" id="nav-notifications" onclick="switchPage('notifications')">
+        <i data-lucide="bell"></i> Notifications
+      </li>
+      <li class="nav-item" id="nav-logs" onclick="switchPage('logs')">
+        <i data-lucide="history"></i> Renewal Logs
+      </li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <div class="header-bar">
+      <h2>Document Tracker</h2>
+      <button class="btn-primary" onclick="openModal()">
+        <i data-lucide="plus"></i> Add Document
+      </button>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <h4>TOTAL TRACKED</h4>
+        <div class="val" id="totalCount">0</div>
+      </div>
+      <div class="stat-card">
+        <h4>ACTIVE / SAFE</h4>
+        <div class="val" id="safeCount" style="color: var(--success);">0</div>
+      </div>
+      <div class="stat-card">
+        <h4>EXPIRING SOON</h4>
+        <div class="val" id="expiringCount" style="color: var(--warning);">0</div>
+      </div>
+      <div class="stat-card">
+        <h4>EXPIRED</h4>
+        <div class="val" id="expiredCount" style="color: var(--danger);">0</div>
+      </div>
+    </div>
+
+    <!-- Page: Dashboard -->
+    <section id="page-dashboard" class="page-section active-page">
+      <div class="card">
+        <div class="card-header">
+          <h3>Tracked Documents</h3>
+          <div class="filter-btn-group">
+            <button class="btn-filter active" id="filter-all-btn" onclick="filterDocs('all')">All</button>
+            <button class="btn-filter" id="filter-urgent-btn" onclick="filterDocs('urgent')">Urgent</button>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Document</th>
+              <th>Issued Date</th>
+              <th>Expiry Date</th>
+              <th>Days Remaining</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="documentTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3>Upcoming Reminders</h3>
+        </div>
+        <div class="remind-list" id="remindList"></div>
+      </div>
+    </section>
+
+    <!-- Page: All Documents -->
+    <section id="page-documents" class="page-section">
+      <div class="card">
+        <div class="card-header">
+          <h3>All Saved Documents</h3>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Document Name</th>
+              <th>Category</th>
+              <th>Issued Date</th>
+              <th>Expiry Date</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="fullDocumentsTable"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Page: Notifications -->
+    <section id="page-notifications" class="page-section">
+      <div class="card">
+        <div class="card-header">
+          <h3>Urgent Notifications</h3>
+        </div>
+        <div class="remind-list" id="notificationsPageList"></div>
+      </div>
+    </section>
+
+    <!-- Page: Renewal Logs -->
+    <section id="page-logs" class="page-section">
+      <div class="card">
+        <div class="card-header">
+          <h3>Renewal History</h3>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Document</th>
+              <th>Action</th>
+              <th>New Expiry</th>
+              <th>Log Date</th>
+            </tr>
+          </thead>
+          <tbody id="logsTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Add Document Modal -->
+  <div class="modal-overlay" id="addModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Add New Document</h3>
+        <button class="btn-action" onclick="closeModal()"><i data-lucide="x"></i></button>
+      </div>
+      <form id="docForm">
+        <div class="form-group">
+          <label>Document Name</label>
+          <input type="text" id="docName" class="form-control" placeholder="e.g. Passport, Vehicle License" required>
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select id="docCategory" class="form-control">
+            <option value="ID Proof">Identity / Official</option>
+            <option value="Vehicle">Vehicle & Transport</option>
+            <option value="Insurance">Insurance & Health</option>
+            <option value="Software">Subscriptions & Licenses</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Issued Date</label>
+          <input type="date" id="docIssued" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label>Expiry Date</label>
+          <input type="date" id="docExpiry" class="form-control" required>
+        </div>
+        <button type="submit" class="btn-primary" style="width: 100%; justify-content: center; margin-top: 20px;">
+          Save & Begin Tracking
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Initial Document State with issued dates included
+    let documentList = [
+      { id: 1, name: 'Driving License', category: 'Vehicle', issued: '2021-09-28', expiry: '2026-09-28' },
+      { id: 2, name: 'Passport', category: 'ID Proof', issued: '2017-12-15', expiry: '2027-12-15' },
+      { id: 3, name: 'Car Insurance', category: 'Insurance', issued: '2025-10-05', expiry: '2026-10-05' },
+      { id: 4, name: 'Microsoft 365 License', category: 'Software', issued: '2025-09-18', expiry: '2026-09-18' }
+    ];
+
+    let renewalLogs = [];
+    let currentFilter = 'all';
+
+    function calculateDays(expiryDateStr) {
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      const expiry = new Date(expiryDateStr);
+      const diffTime = expiry - today;
+      return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    }
+
+    function switchPage(pageId) {
+      document.querySelectorAll('.page-section').forEach(page => page.classList.remove('active-page'));
+      document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+      
+      document.getElementById(`page-${pageId}`).classList.add('active-page');
+      document.getElementById(`nav-${pageId}`).classList.add('active');
+
+      renderDashboard();
+    }
+
+    function filterDocs(filter) {
+      currentFilter = filter;
+      document.getElementById('filter-all-btn').classList.toggle('active', filter === 'all');
+      document.getElementById('filter-urgent-btn').classList.toggle('active', filter === 'urgent');
+      renderDashboard();
+    }
+
+    function renewDocument(id) {
+      const doc = documentList.find(d => d.id === id);
+      if (!doc) return;
+
+      const newDate = prompt(`Enter new expiry date for ${doc.name} (YYYY-MM-DD):`, '2027-09-28');
+      if (newDate) {
+        doc.expiry = newDate;
+        renewalLogs.unshift({
+          docName: doc.name,
+          action: 'Renewed',
+          newExpiry: newDate,
+          dateExecuted: new Date().toISOString().split('T')[0]
+        });
+        renderDashboard();
+      }
+    }
+
+    function deleteDocument(id) {
+      if (confirm('Are you sure you want to remove this document?')) {
+        documentList = documentList.filter(d => d.id !== id);
+        renderDashboard();
+      }
+    }
+
+    function openModal() {
+      document.getElementById('addModal').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('addModal').classList.remove('active');
+    }
+
+    document.getElementById('docForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = document.getElementById('docName').value;
+      const category = document.getElementById('docCategory').value;
+      const issued = document.getElementById('docIssued').value;
+      const expiry = document.getElementById('docExpiry').value;
+
+      documentList.push({
+        id: Date.now(),
+        name,
+        category,
+        issued,
+        expiry
+      });
+
+      document.getElementById('docForm').reset();
+      closeModal();
+      renderDashboard();
+    });
+
+    function getBadgeHTML(days) {
+      if (days < 0) return `<span class="badge badge-expired"><i data-lucide="alert-circle"></i> Expired</span>`;
+      if (days <= 30) return `<span class="badge badge-remind"><i data-lucide="alert-triangle"></i> Expiring Soon</span>`;
+      return `<span class="badge badge-tracked"><i data-lucide="shield-check"></i> Safe</span>`;
+    }
+
+    function renderDashboard() {
+      const tbody = document.getElementById('documentTableBody');
+      const remindList = document.getElementById('remindList');
+      const fullTable = document.getElementById('fullDocumentsTable');
+      const notificationsList = document.getElementById('notificationsPageList');
+      const logsTableBody = document.getElementById('logsTableBody');
+
+      if (tbody) tbody.innerHTML = '';
+      if (remindList) remindList.innerHTML = '';
+      if (fullTable) fullTable.innerHTML = '';
+      if (notificationsList) notificationsList.innerHTML = '';
+      if (logsTableBody) logsTableBody.innerHTML = '';
+
+      let safeCount = 0;
+      let expiringCount = 0;
+      let expiredCount = 0;
+
+      documentList.forEach(doc => {
+        const days = calculateDays(doc.expiry);
+        if (days < 0) expiredCount++;
+        else if (days <= 30) expiringCount++;
+        else safeCount++;
+
+        // Dashboard View
+        if (currentFilter === 'all' || (currentFilter === 'urgent' && days <= 30)) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>
+              <div class="doc-cell">
+                <div class="doc-icon"><i data-lucide="file-text"></i></div>
+                <div>
+                  <div>${doc.name}</div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">${doc.category}</div>
+                </div>
+              </div>
+            </td>
+            <td>${doc.issued || 'N/A'}</td>
+            <td>${doc.expiry}</td>
+            <td>${days < 0 ? 'Overdue' : days + ' days'}</td>
+            <td>${getBadgeHTML(days)}</td>
+            <td>
+              <button class="btn-action" onclick="renewDocument(${doc.id})"><i data-lucide="refresh-cw"></i> Renew</button>
+            </td>
+          `;
+          if (tbody) tbody.appendChild(tr);
+        }
+
+        // Full Documents View
+        const fullTr = document.createElement('tr');
+        fullTr.innerHTML = `
+          <td class="doc-cell"><div class="doc-icon"><i data-lucide="file-text"></i></div> ${doc.name}</td>
+          <td>${doc.category}</td>
+          <td>${doc.issued || 'N/A'}</td>
+          <td>${doc.expiry}</td>
+          <td>${getBadgeHTML(days)}</td>
+          <td>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn-action" onclick="renewDocument(${doc.id})"><i data-lucide="refresh-cw"></i></button>
+              <button class="btn-action btn-danger" onclick="deleteDocument(${doc.id})"><i data-lucide="trash-2"></i></button>
+            </div>
+          </td>
+        `;
+        if (fullTable) fullTable.appendChild(fullTr);
+
+        // Notifications List
+        if (days <= 30) {
+          const isUrgent = days <= 7;
+          const item = document.createElement('div');
+          item.className = `remind-item ${isUrgent ? 'urgent' : ''}`;
+          item.innerHTML = `
+            <i data-lucide="${isUrgent ? 'alert-circle' : 'bell'}" class="remind-icon"></i>
+            <div class="remind-content">
+              <h5>${doc.name}</h5>
+              <p>${days < 0 ? 'Document has expired! Take immediate action.' : `Expires in ${days} days (${doc.expiry}).`}</p>
+            </div>
+          `;
+          if (remindList) remindList.appendChild(item.cloneNode(true));
+          if (notificationsList) notificationsList.appendChild(item);
+        }
+      });
+
+      // Update Quick Stats
+      document.getElementById('totalCount').innerText = documentList.length;
+      document.getElementById('safeCount').innerText = safeCount;
+      document.getElementById('expiringCount').innerText = expiringCount;
+      document.getElementById('expiredCount').innerText = expiredCount;
+
+      // Render Renewal History Logs
+      if (renewalLogs.length === 0 && logsTableBody) {
+        logsTableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">No renewals logged yet.</td></tr>`;
+      } else {
+        renewalLogs.forEach(log => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><strong>${log.docName}</strong></td>
+            <td><span class="badge badge-tracked">${log.action}</span></td>
+            <td>${log.newExpiry}</td>
+            <td>${log.dateExecuted}</td>
+          `;
+          if (logsTableBody) logsTableBody.appendChild(tr);
+        });
+      }
+
+      lucide.createIcons();
+    }
+
+    // Initial Render
+    renderDashboard();
+  </script>
+</body>
+</html>
